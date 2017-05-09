@@ -4,7 +4,7 @@
 Dragontooth | Dylan D. Hunn
 ===========================
 
-Dragontooth Movegen is a fast, UCI-compliant chess engine written in Go.
+Dragontooth is a fast, UCI-compliant chess engine written in Go.
 
 Repo summary
 ============
