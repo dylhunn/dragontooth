@@ -6,6 +6,11 @@ Dragontooth | Dylan D. Hunn
 
 Dragontooth is a fast, UCI-compliant chess engine written in Go.
 
+Where can I download compiled binaries/executables?
+===================================================
+
+This repo contains the source code. Compiled executables are available in [the releases section](https://github.com/dylhunn/dragontooth/releases).
+
 Repo summary
 ============
 
