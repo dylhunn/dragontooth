@@ -6,21 +6,23 @@ Dragontooth | Dylan D. Hunn
 
 **This project is currently a partially-implemented concept.**
 
-Dragontooth is a fast, UCI-compliant chess engine written in Go.
+Dragontooth is a fast, UCI-compliant chess engine written in Go. The successor to my [previous engine](https://github.com/dylhunn/sabertooth-source), Dragontooth is the first highly-parallel Go chess engine. It uses state-of-the-art techniques, including magic bitboards, fully-legal move generation, highly parallel search, and automatic parameter tuning.
+
+Additionally, Dragontooth has some unique features. It is 100% modular, such that the [move generator and associated utilities](https://github.com/dylhunn/dragontoothmg) are packaged as a library. Moreover, the code is written with a focus on readability, so it can serve as a "reference" engine.
 
 Where can I download compiled binaries/executables?
 ===================================================
 
-This repo contains the source code. Compiled executables are available in [the releases section](https://github.com/dylhunn/dragontooth/releases).
+Compiled versions for several platforms are available in [the releases section](https://github.com/dylhunn/dragontooth/releases). This repo contains the source code.
 
 Repo summary
 ============
 
 Here is a summary of the important files and folders in the repo:
 
-| **File**         | **Description**                                                                                                                                         |
+| **Package**         | **Description**                                                                                                                                         |
 |--------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| main.go       | This is the UCI entrypoint that handles communication with the GUI. |
+| main       | This is the UCI entrypoint that handles communication with the GUI. |
 | evaluate       | This package handles board evaluation. |
 | ttable      | This package implements the transposition table. |
 | search      | This package provides the primary alpha-beta search functions. |
