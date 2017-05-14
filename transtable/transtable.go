@@ -15,6 +15,12 @@ const (
 var keys []uint64
 var values []uint64
 
+var DefaultTtableSize int = 512 // 512 MB; can be overridden by user
+
+func init() {
+	Initialize(DefaultTtableSize) // default ttable of 512 MB
+}
+
 // Initialize (or reinitialize and clear) the table. Must be called before use.
 func Initialize(sizeInMb int) {
 	bits := 8 * 1024 * 1024 * sizeInMb
