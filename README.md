@@ -4,6 +4,8 @@
 Dragontooth | Dylan D. Hunn
 ===========================
 
+**This project is currently a partially-implemented concept.**
+
 Dragontooth is a fast, UCI-compliant chess engine written in Go.
 
 Where can I download compiled binaries/executables?
@@ -14,16 +16,17 @@ This repo contains the source code. Compiled executables are available in [the r
 Repo summary
 ============
 
-Here is a summary of the important files in the repo:
+Here is a summary of the important files and folders in the repo:
 
 | **File**         | **Description**                                                                                                                                         |
 |--------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | main.go       | This is the UCI entrypoint that handles communication with the GUI. |
+| evaluate       | This package handles board evaluation. |
+| ttable      | This package implements the transposition table. |
+| search      | This package provides the primary alpha-beta search functions. |
 
-**This project is currently a concept.** Check back soon for progress.
-
-Installing and building Dragontooth
-===================================
+Building Dragontooth from source
+================================
 
 This project requires Go 1.9. As of the time of writing, 1.9 is still a pre-release version. You can get it by cloning the official [Go Repo](https://github.com/golang/go), and building it yourself.
 
