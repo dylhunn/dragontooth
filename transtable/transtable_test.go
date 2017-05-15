@@ -9,7 +9,7 @@ func TestSimpleTt(t *testing.T) {
 	// Some example positions taken from apply_test
 	movesMap := map[string]dragontoothmg.Move{
 		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0": parseMove("e2e4"),
-		/*"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 0": parseMove("e1g1"),
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 0": parseMove("e1g1"),
 		"r3kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R b KQq - 0 0": parseMove("e8c8"),
 		"r3k2r/1pppppp1/8/8/8/8/1PPPPPPP/R3K2R w KQq - 0 0": parseMove("a1b1"),
 		"r3k2r/1pppppp1/8/8/8/8/1PPPPPPP/R3K2R b KQq - 0 0": parseMove("h8h7"),
@@ -26,14 +26,14 @@ func TestSimpleTt(t *testing.T) {
 		"r3k3/p1ppqpb1/bn2pnpr/3PN3/1p2P3/5Q1p/PPPBBPPP/RN2K2R w KQq - 0 0": parseMove("d2h6"),
 		"r3k2r/p1ppqpb1/1n2pnp1/1b1PN3/1p2P3/P1N2Q1p/1PPBBPPP/R3K2R w KQkq - 0 0": parseMove("e1g1"),
 		"r3k2r/Pppp1ppp/1b3nbN/nPB5/B1P1P3/q4N2/P2P2PP/r2Q1RK1 w kq - 0 0": parseMove("d1a1"),
-		"r3k2r/Pppp1ppp/1b3nbN/nPB5/2P1P3/qB3N2/P2P2PP/r2Q1RK1 b kq - 0 0": parseMove("a1a2"),*/
+		"r3k2r/Pppp1ppp/1b3nbN/nPB5/2P1P3/qB3N2/P2P2PP/r2Q1RK1 b kq - 0 0": parseMove("a1a2"),
 	}
 	Initialize(1000)
 	for k, mv := range movesMap {
 		b := dragontoothmg.ParseFen(k)
-		Put(&b, mv, -30, 6, LowerBound)
+		Put(&b, mv, -30, -6, LowerBound)
 		found, resmove, reseval, resdepth, restype := Get(&b)
-		if (!found || resmove != mv || reseval != -30 || resdepth != 6 || restype != LowerBound) {
+		if (!found || resmove != mv || reseval != -30 || resdepth != -6 || restype != LowerBound) {
 			t.Error("Simple ttable test failed. \nPut data:", b.ToFen(), &mv,
 				-30, 6, Exact, "\n", "Fetched data:", found, &resmove, reseval,
 				resdepth, restype)

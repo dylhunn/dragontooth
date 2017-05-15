@@ -38,9 +38,9 @@ func Initialize(sizeInMb int) {
 
 // Insert an entry into the transposition table, which requires the board position,
 // the best move, the evaluation score, the entry search depth, and the node type.
-func Put(b *dragontoothmg.Board, m dragontoothmg.Move, eval int16, depth uint8, ntype uint8) {
+func Put(b *dragontoothmg.Board, m dragontoothmg.Move, eval int16, depth int8, ntype uint8) {
 	var value uint64 = uint64(uint16(eval)) | (uint64(m) << 16) | (uint64(b.Fullmoveno) << 32) |
-		(uint64(depth) << 48) | (uint64(ntype) << 56)
+		(uint64(uint8(depth)) << 48) | (uint64(ntype) << 56)
 	hash := b.Hash()
 	key := hash ^ value
 	index := hash % uint64(len(keys))
@@ -50,7 +50,7 @@ func Put(b *dragontoothmg.Board, m dragontoothmg.Move, eval int16, depth uint8, 
 }
 
 func Get(b *dragontoothmg.Board) (found bool, move dragontoothmg.Move,
-	eval int16, depth uint8, ntype uint8) {
+	eval int16, depth int8, ntype uint8) {
 	hash := b.Hash()
 	index := hash % uint64(len(keys))
 	// TODO(dylhunn): Investigate atomics. Atomics might not be necessary on
@@ -64,7 +64,7 @@ func Get(b *dragontoothmg.Board) (found bool, move dragontoothmg.Move,
 	}
 	eval = int16((value & 0xFFFF))
 	move = dragontoothmg.Move((value >> 16) & 0xFFFF)
-	depth = uint8((value >> 48) & 0xFF)
+	depth = int8((value >> 48) & 0xFF)
 	ntype = uint8((value >> 56) & 0xFF)
 	return
 }

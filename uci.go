@@ -20,6 +20,9 @@ func main() {
 func uciLoop() {
 	scanner := bufio.NewScanner(os.Stdin)
 	board := dragontoothmg.ParseFen(dragontoothmg.Startpos) // the game board
+	// used for communicating with search routine
+	haltchannel := make(chan bool)
+	movechannel := make(chan dragontoothmg.Move, 100) // buffers one result per iterative deepening
 	for scanner.Scan() {
 		line := scanner.Text()
 		tokens := strings.Fields(line)
@@ -66,6 +69,72 @@ func uciLoop() {
 			default:
 				fmt.Println("info string Unknown UCI option", tokens[2])
 			}
+		case "go":
+			movechannel = make(chan dragontoothmg.Move, 100) // buffers one result per iterative deepening
+			goScanner := bufio.NewScanner(strings.NewReader(line))
+			goScanner.Split(bufio.ScanWords)
+			goScanner.Scan() // skip the first token
+			var wtime, btime, winc, binc int
+			var err error
+			for goScanner.Scan() {
+				nextToken := strings.ToLower(goScanner.Text())
+				switch nextToken {
+				case "infinite":
+					// do nothing
+					continue
+				case "wtime":
+					if !goScanner.Scan() {
+						fmt.Println("info string Malformed go command option wtime")
+						continue
+					}
+					wtime, err = strconv.Atoi(goScanner.Text())
+					if err != nil {
+						fmt.Println("info string Malformed go command option; could not convert wtime")
+						continue
+					}
+				case "btime":
+					if !goScanner.Scan() {
+						fmt.Println("info string Malformed go command option btime")
+						continue
+					}
+					btime, err = strconv.Atoi(goScanner.Text())
+					if err != nil {
+						fmt.Println("info string Malformed go command option; could not convert btime")
+						continue
+					}
+				case "winc":
+					if !goScanner.Scan() {
+						fmt.Println("info string Malformed go command option winc")
+						continue
+					}
+					winc, err = strconv.Atoi(goScanner.Text())
+					if err != nil {
+						fmt.Println("info string Malformed go command option; could not convert winc")
+						continue
+					}
+				case "binc":
+					if !goScanner.Scan() {
+						fmt.Println("info string Malformed go command option binc")
+						continue
+					}
+					binc, err = strconv.Atoi(goScanner.Text())
+					if err != nil {
+						fmt.Println("info string Malformed go command option; could not convert binc")
+						continue
+					}
+				default:
+					fmt.Println("info string Unknown go subcommand", nextToken)
+					continue
+				}
+			}
+			_, _, _, _ = wtime, btime, winc, binc
+			go search.Search(&board, movechannel, haltchannel)
+		case "stop":
+			haltchannel <- true
+			var bestMove dragontoothmg.Move
+			close(movechannel)
+			for bestMove = range movechannel {} // load the last item in the channel
+			fmt.Println("bestmove", &bestMove)
 		case "position":
 			posScanner := bufio.NewScanner(strings.NewReader(line))
 			posScanner.Split(bufio.ScanWords)
