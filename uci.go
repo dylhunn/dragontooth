@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/dylhunn/dragontooth/search"
 	"github.com/dylhunn/dragontooth/transtable"
 	"github.com/dylhunn/dragontoothmg"
 	"os"
@@ -22,7 +23,7 @@ func uciLoop() {
 	for scanner.Scan() {
 		line := scanner.Text()
 		tokens := strings.Fields(line)
-		if (len(tokens) == 0) { // ignore blank lines
+		if len(tokens) == 0 { // ignore blank lines
 			continue
 		}
 		switch strings.ToLower(tokens[0]) {
@@ -30,6 +31,7 @@ func uciLoop() {
 			fmt.Println("id name Dragontooth", versionString)
 			fmt.Println("id author Dylan D. Hunn (dylhunn)")
 			fmt.Println("option name Hash type spin default", transtable.DefaultTtableSize, "min 8 max 65536")
+			fmt.Println("option name SearchThreads type spin default", search.DefaultSearchThreads, "min 1 max 128")
 			fmt.Println("uciok")
 		case "isready":
 			fmt.Println("readyok")
@@ -54,6 +56,13 @@ func uciLoop() {
 				fmt.Println("info string Changed table size. Clearing and reloading table...")
 				transtable.DefaultTtableSize = res // reset the size and reload the table
 				transtable.Initialize(transtable.DefaultTtableSize)
+			case "searchthreads":
+				res, err := strconv.Atoi(tokens[4])
+				if err != nil {
+					fmt.Println("info string Number of threads is not an int (", err, ")")
+					continue
+				}
+				search.DefaultSearchThreads = res
 			default:
 				fmt.Println("info string Unknown UCI option", tokens[2])
 			}
@@ -61,19 +70,19 @@ func uciLoop() {
 			posScanner := bufio.NewScanner(strings.NewReader(line))
 			posScanner.Split(bufio.ScanWords)
 			posScanner.Scan() // skip the first token
-			if (!posScanner.Scan()) {
+			if !posScanner.Scan() {
 				fmt.Println("info string Malformed position command")
 				continue
 			}
-			if (strings.ToLower(posScanner.Text()) == "startpos") {
+			if strings.ToLower(posScanner.Text()) == "startpos" {
 				board = dragontoothmg.ParseFen(dragontoothmg.Startpos)
 				posScanner.Scan() // advance the scanner to leave it in a consistent state
-			} else if (strings.ToLower(posScanner.Text()) == "fen") {
+			} else if strings.ToLower(posScanner.Text()) == "fen" {
 				fenstr := ""
 				for posScanner.Scan() && strings.ToLower(posScanner.Text()) != "moves" {
 					fenstr += posScanner.Text() + " "
 				}
-				if (fenstr == "") {
+				if fenstr == "" {
 					fmt.Println("info string Invalid fen position")
 					continue
 				}
@@ -97,11 +106,11 @@ func uciLoop() {
 						break
 					}
 				}
-				if (!found) { // we didn't find the move, but we will try to apply it anyway
+				if !found { // we didn't find the move, but we will try to apply it anyway
 					fmt.Println("info string Move", moveStr, "not found for position", board.ToFen())
 					var err error
 					nextMove, err = dragontoothmg.ParseMove(moveStr)
-					if (err != nil) {
+					if err != nil {
 						fmt.Println("info string Contingency move parsing failed")
 						continue
 					}
