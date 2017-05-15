@@ -61,12 +61,12 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 	case <-halt:
 		*stop = true
 		return alpha, 0 // TODO(dylhunn): Is this a reasonable value to return?
-	default:
-		// continue execution
+	default: // continue execution
 	}
 	if *stop {
 		return alpha, 0
 	}
+	
 	found, tableMove, tableEval, tableDepth, tableNodeType := transtable.Get(b)
 	if found && tableDepth >= depth {
 		if tableNodeType == transtable.Exact {
@@ -104,13 +104,6 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 		}
 	}
 
-	select { // No writing to the transposition table after a halt instruction
-	case <-halt:
-		*stop = true
-		return bestVal, bestMove // TODO(dylhunn): Is this a reasonable value to return?
-	default:
-		// continue execution
-	}
 	if *stop {
 		return bestVal, bestMove
 	}
