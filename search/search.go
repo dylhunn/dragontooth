@@ -11,7 +11,7 @@ func Search() {
 
 }
 
-func abMax(b *dragontoothmg.Board, alpha int, beta int, depth int) int {
+func abMax(b *dragontoothmg.Board, alpha int16, beta int16, depth int) int16 {
 	if (depth == 0) {
 		return eval.Evaluate(b)
 	}
@@ -30,7 +30,7 @@ func abMax(b *dragontoothmg.Board, alpha int, beta int, depth int) int {
 	return alpha
 }
 
-func abMin(b *dragontoothmg.Board, alpha int, beta int, depth int) int {
+func abMin(b *dragontoothmg.Board, alpha int16, beta int16, depth int) int16 {
 	if (depth == 0) {
 		return eval.Evaluate(b)
 	}
