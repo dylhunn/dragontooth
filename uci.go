@@ -128,14 +128,14 @@ func uciLoop() {
 			}
 			stop := false
 			go search.Search(&board, haltchannel, &stop)
-			if (wtime != 0 && btime != 0 && !infinite) { // If times are specified
+			if wtime != 0 && btime != 0 && !infinite { // If times are specified
 				var ourtime, opptime, ourinc, oppinc int
 				if board.Wtomove {
 					ourtime, opptime, ourinc, oppinc = wtime, btime, winc, binc
 				} else {
 					ourtime, opptime, ourinc, oppinc = btime, wtime, binc, winc
 				}
-				allowedTime := search.CalculateAllowedTime(ourtime, opptime, ourinc, oppinc)
+				allowedTime := search.CalculateAllowedTime(&board, ourtime, opptime, ourinc, oppinc)
 				go search.SearchTimeout(haltchannel, allowedTime, &stop)
 			}
 		case "stop":

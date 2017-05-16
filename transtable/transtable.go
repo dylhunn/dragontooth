@@ -17,6 +17,9 @@ var values []uint64
 
 var DefaultTtableSize int = 512 // 512 MB; can be overridden by user
 
+var slots int
+var entries int
+
 func init() {
 	Initialize(DefaultTtableSize) // default ttable of 512 MB
 }
@@ -24,9 +27,9 @@ func init() {
 // Initialize (or reinitialize and clear) the table. Must be called before use.
 func Initialize(sizeInMb int) {
 	bits := 8 * 1024 * 1024 * sizeInMb
-	entries := (bits / 128) + 1 // seek an odd number
-	keys = make([]uint64, entries, entries)
-	values = make([]uint64, entries, entries)
+	slots = (bits / 128) + 1 // seek an odd number
+	keys = make([]uint64, slots, slots)
+	values = make([]uint64, slots, slots)
 }
 
 // Key structure, from LSB
@@ -45,6 +48,9 @@ func Put(b *dragontoothmg.Board, m dragontoothmg.Move, eval int16, depth int8, n
 	key := hash ^ value
 	index := hash % uint64(len(keys))
 	// TODO(dylhunn): Try various probing and replacement strategies
+	if keys[index] == 0 {
+		entries++
+	}
 	keys[index] = key
 	values[index] = value
 }
@@ -67,4 +73,8 @@ func Get(b *dragontoothmg.Board) (found bool, move dragontoothmg.Move,
 	depth = int8((value >> 48) & 0xFF)
 	ntype = uint8((value >> 56) & 0xFF)
 	return
+}
+
+func Load() float32 {
+	return float32(entries) / float32(slots)
 }

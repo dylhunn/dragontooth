@@ -19,7 +19,7 @@ const posInf = math.MaxInt16 - 1
 // Using the transposition table, attempt to reconstruct the rest of the PV
 // (after the first move).
 func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
-	var pv string = startmove.String() + " "
+	var pv string = startmove.String()
 	b.Apply(startmove)
 	for {
 		found, tableMove, _, _, _ := transtable.Get(&b)
@@ -36,7 +36,7 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 		}
 		if isLegal {
 			b.Apply(tableMove)
-			pv += tableMove.String() + " "
+			pv += " " + tableMove.String()
 		} else {
 			fmt.Println("info string Failed table PV lookup. Table gives invalid next move",
 				&tableMove, tableMove, "with PV", pv, "for position", b.ToFen())
@@ -46,8 +46,18 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 	return pv
 }
 
-func CalculateAllowedTime(ourtime int, opptime int, ourinc int, oppinc int) int {
-	return 5000
+func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
+	// This time managment formula is taken from the research of V. VUČKOVIĆ and R. ŠOLAK
+	totalMaterial := eval.CountMaterial(&b.White) + eval.CountMaterial(&b.Black)
+	var expectedHalfMovesRemaining int
+	if totalMaterial < 2000 {
+		expectedHalfMovesRemaining = int(float32(totalMaterial)/100 + 10)
+	} else if totalMaterial <= 6000 {
+		expectedHalfMovesRemaining = int(((float32(totalMaterial)/100)*3)/8 + 22)
+	} else {
+		expectedHalfMovesRemaining = int(float32(totalMaterial)/100*5/4 - 30)
+	}
+	return ourtime / expectedHalfMovesRemaining
 }
 
 // After a certain period of time, sends a signal to halt the search,
@@ -55,7 +65,7 @@ func CalculateAllowedTime(ourtime int, opptime int, ourinc int, oppinc int) int 
 // Also prints the best move. If the sleep time is 0, does nothing.
 // The bool pointer alreadyStopped should be the same as the one given to Search().
 func SearchTimeout(halt chan bool, ms int, alreadyStopped *bool) {
-	if (ms == 0) {
+	if ms == 0 {
 		return
 	}
 	time.Sleep(time.Duration(ms) * time.Millisecond)
@@ -63,6 +73,8 @@ func SearchTimeout(halt chan bool, ms int, alreadyStopped *bool) {
 		halt <- true
 	}
 }
+
+var nodeCount int = 0 // Used for search statistics
 
 // The main entrypoint for the search. Spawns the appropriate number of threads,
 // and prints the results (including pv and bestmove).
@@ -75,6 +87,8 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 		evals := make([]int16, threadsToSpawn)
 		movesChan := make(chan dragontoothmg.Move)
 		evalsChan := make(chan int16)
+		start := time.Now()
+		nodeCount = 0
 		// Start the search threads
 		for thread := 0; thread < threadsToSpawn; thread++ {
 			boardCopy := *board
@@ -85,17 +99,20 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 			moves[thread], evals[thread] = <-movesChan, <-evalsChan
 		}
 		// Sanity check: results should be the same
-		for thread := 0; thread < threadsToSpawn - 1; thread++ {
+		for thread := 0; thread < threadsToSpawn-1; thread++ {
 			if moves[thread] != moves[thread+1] || evals[thread] != evals[thread+1] {
 				fmt.Println("info string Search threads returned inconsistent results.")
 			}
 		}
+		timeElapsed := time.Since(start)
 		eval, move := evals[0], moves[0]
 		if *stop { // computation was truncated
 			fmt.Println("bestmove", &lastMove)
 			return
 		} else { // valid results
-			fmt.Println("info depth", i, "pv", lookupPv(*board, move), "score", eval)
+			fmt.Println("info depth", i, "pv", lookupPv(*board, move), "score cp", eval, "time",
+				timeElapsed.Nanoseconds()/1000000, "hashfull", int(transtable.Load()*1000), "nodes",
+				nodeCount, "nps", int(float64(nodeCount)/(timeElapsed.Seconds())))
 			lastMove = move
 		}
 	}
@@ -103,7 +120,7 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 
 // Wraps the ab-search function at full-depth, so the return values can be sent over
 // the channels.
-func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool, 
+func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool,
 	stop *bool, moveChan chan dragontoothmg.Move, evalChan chan int16) {
 	eval, move := ab(b, alpha, beta, depth, halt, stop)
 	moveChan <- move
@@ -112,6 +129,7 @@ func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt
 
 // Perform the alpha-beta search.
 func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool, stop *bool) (int16, dragontoothmg.Move) {
+	nodeCount++
 	select {
 	case <-halt:
 		*stop = true
@@ -136,7 +154,8 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 		}
 	}
 	if depth == 0 {
-		return eval.Evaluate(b), 0
+		//return eval.Evaluate(b), 0
+		return quiesce(b, alpha, beta, stop), 0
 	}
 
 	alpha0 := alpha
@@ -173,6 +192,41 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 	}
 	transtable.Put(b, bestMove, bestVal, depth, nodeType)
 	return bestVal, bestMove
+}
+
+func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, stop *bool) int16 {
+	nodeCount++
+	if *stop {
+		return alpha
+	}
+	standPat := eval.Evaluate(b)
+	if standPat >= beta {
+		return beta
+	}
+	if alpha < standPat {
+		alpha = standPat
+	}
+	moves := b.GenerateLegalMoves()
+	for _, move := range moves {
+		if !isCapture(move, b) {
+			continue
+		}
+		unapply := b.Apply(move)
+		score := -quiesce(b, -beta, -alpha, stop)
+		unapply()
+		if score >= beta {
+			return beta
+		}
+		if score > alpha {
+			alpha = score
+		}
+	}
+	return alpha
+}
+
+func isCapture(m dragontoothmg.Move, b *dragontoothmg.Board) bool {
+	toBitboard := (uint64(1) << m.To())
+	return (toBitboard&b.White.All != 0) || (toBitboard&b.Black.All != 0)
 }
 
 func min(x, y int16) int16 {

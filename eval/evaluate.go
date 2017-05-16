@@ -14,15 +14,16 @@ const queenValue = 900
 // Return a static evaluation, relative to the side to move.
 func Evaluate(b *dragontoothmg.Board) int16 {
 	var score int
-	score += countMaterial(&b.White)
-	score -= countMaterial(&b.Black)
+	score += CountMaterial(&b.White)
+	score -= CountMaterial(&b.Black)
 	if !b.Wtomove {
 		score = -score
 	}
 	return int16(score)
 }
 
-func countMaterial(bb *dragontoothmg.Bitboards) int {
+// This is public so it can also be used for time managment
+func CountMaterial(bb *dragontoothmg.Bitboards) int {
 	var score int
 	score += bits.OnesCount64(bb.Pawns) * pawnValue
 	score += bits.OnesCount64(bb.Knights) * knightValue
