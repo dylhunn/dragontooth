@@ -22,7 +22,6 @@ func uciLoop() {
 	board := dragontoothmg.ParseFen(dragontoothmg.Startpos) // the game board
 	// used for communicating with search routine
 	haltchannel := make(chan bool)
-	movechannel := make(chan dragontoothmg.Move, 100) // buffers one result per iterative deepening
 	for scanner.Scan() {
 		line := scanner.Text()
 		tokens := strings.Fields(line)
@@ -70,17 +69,17 @@ func uciLoop() {
 				fmt.Println("info string Unknown UCI option", tokens[2])
 			}
 		case "go":
-			movechannel = make(chan dragontoothmg.Move, 100) // buffers one result per iterative deepening
 			goScanner := bufio.NewScanner(strings.NewReader(line))
 			goScanner.Split(bufio.ScanWords)
 			goScanner.Scan() // skip the first token
 			var wtime, btime, winc, binc int
+			var infinite bool
 			var err error
 			for goScanner.Scan() {
 				nextToken := strings.ToLower(goScanner.Text())
 				switch nextToken {
 				case "infinite":
-					// do nothing
+					infinite = true
 					continue
 				case "wtime":
 					if !goScanner.Scan() {
@@ -128,13 +127,20 @@ func uciLoop() {
 				}
 			}
 			_, _, _, _ = wtime, btime, winc, binc
-			go search.Search(&board, movechannel, haltchannel)
+			stop := false
+			go search.Search(&board, haltchannel, &stop)
+			if (wtime != 0 && btime != 0 && !infinite) { // If times are specified
+				var ourtime, opptime, ourinc, oppinc int
+				if board.Wtomove {
+					ourtime, opptime, ourinc, oppinc = wtime, btime, winc, binc
+				} else {
+					ourtime, opptime, ourinc, oppinc = btime, wtime, binc, winc
+				}
+				allowedTime := search.CalculateAllowedTime(ourtime, opptime, ourinc, oppinc)
+				go search.SearchTimeout(haltchannel, allowedTime, &stop)
+			}
 		case "stop":
 			haltchannel <- true
-			var bestMove dragontoothmg.Move
-			close(movechannel)
-			for bestMove = range movechannel {} // load the last item in the channel
-			fmt.Println("bestmove", &bestMove)
 		case "position":
 			posScanner := bufio.NewScanner(strings.NewReader(line))
 			posScanner.Split(bufio.ScanWords)

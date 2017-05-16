@@ -6,6 +6,7 @@ import (
 	"github.com/dylhunn/dragontooth/transtable"
 	"github.com/dylhunn/dragontoothmg"
 	"math"
+	"time"
 )
 
 var DefaultSearchThreads int = 4
@@ -42,16 +43,40 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 	return pv
 }
 
-func Search(board *dragontoothmg.Board, cm chan dragontoothmg.Move, halt chan bool) {
+func CalculateAllowedTime(ourtime int, opptime int, ourinc int, oppinc int) int {
+	return 5000
+}
+
+// Sends a signal to halt the search, if it has not already been sent, after a certain period of time.
+// Also prints the bestmove. If the sleep time is 0, does nothing.
+func SearchTimeout(halt chan bool, ms int, alreadyStopped *bool) {
+	if (ms == 0) {
+		return
+	}
+	time.Sleep(time.Duration(ms) * time.Millisecond)
+	if !*alreadyStopped { // don't send the halt signal if the search has already been stopped
+		halt <- true
+	}
+}
+
+func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 	var i int8
-	stop := false
+	var lastMove dragontoothmg.Move
 	for i = 1; ; i++ { // iterative deepening
-		eval, move := ab(board, negInf, posInf, i, halt, &stop)
-		if stop { // computation was truncated
+		threadsToSpawn := 1
+		evals := make([]int16, threadsToSpawn)
+		moves := make([]dragontoothmg.Move, threadsToSpawn)
+		for thread := 0; thread < threadsToSpawn; thread++ {
+			boardCopy := *board
+			evals[thread], moves[thread] = ab(&boardCopy, negInf, posInf, i, halt, stop)
+		}
+		eval, move := evals[0], moves[0]
+		if *stop { // computation was truncated
+			fmt.Println("bestmove", &lastMove)
 			return
 		} else { // valid results
 			fmt.Println("info depth", i, "pv", lookupPv(*board, move), "score", eval)
-			cm <- move
+			lastMove = move
 		}
 	}
 }
@@ -66,7 +91,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 	if *stop {
 		return alpha, 0
 	}
-	
+
 	found, tableMove, tableEval, tableDepth, tableNodeType := transtable.Get(b)
 	if found && tableDepth >= depth {
 		if tableNodeType == transtable.Exact {
