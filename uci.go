@@ -126,7 +126,6 @@ func uciLoop() {
 					continue
 				}
 			}
-			_, _, _, _ = wtime, btime, winc, binc
 			stop := false
 			go search.Search(&board, haltchannel, &stop)
 			if (wtime != 0 && btime != 0 && !infinite) { // If times are specified

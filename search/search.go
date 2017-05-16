@@ -64,11 +64,21 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 	var lastMove dragontoothmg.Move
 	for i = 1; ; i++ { // iterative deepening
 		threadsToSpawn := 1
-		evals := make([]int16, threadsToSpawn)
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
+		evals := make([]int16, threadsToSpawn)
+		movesChan := make(chan dragontoothmg.Move)
+		evalsChan := make(chan int16)
 		for thread := 0; thread < threadsToSpawn; thread++ {
 			boardCopy := *board
-			evals[thread], moves[thread] = ab(&boardCopy, negInf, posInf, i, halt, stop)
+			abWrapper(&boardCopy, negInf, posInf, i, halt, stop, movesChan, evalsChan)
+		}
+		for thread := 0; thread < threadsToSpawn; thread++ { // collect the results
+			moves[thread], evals[thread] = <-movesChan, <-evalsChan
+		}
+		for thread := 0; thread < threadsToSpawn - 1; thread++ { // collect the results
+			if moves[thread] != moves[thread+1] || evals[thread] != evals[thread+1] {
+				fmt.Println("Search threads returned inconsistent results.")
+			}
 		}
 		eval, move := evals[0], moves[0]
 		if *stop { // computation was truncated
@@ -79,6 +89,13 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 			lastMove = move
 		}
 	}
+}
+
+func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool, 
+	stop *bool, moveChan chan dragontoothmg.Move, evalChan chan int16) {
+	eval, move := ab(b, alpha, beta, depth, halt, stop)
+	moveChan <- move
+	evalChan <- eval
 }
 
 func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool, stop *bool) (int16, dragontoothmg.Move) {
