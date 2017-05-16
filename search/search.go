@@ -46,8 +46,9 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 	return pv
 }
 
-func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
-	// This time managment formula is taken from the research of V. VUČKOVIĆ and R. ŠOLAK
+// Returns an estimate of the total number of halfmoves left in the game
+func EstimateHalfmovesLeft(b *dragontoothmg.Board) int {
+	// This material counting formula is taken from the research of V. VUČKOVIĆ and R. ŠOLAK
 	totalMaterial := eval.CountMaterial(&b.White) + eval.CountMaterial(&b.Black)
 	var expectedHalfMovesRemaining int
 	if totalMaterial < 2000 {
@@ -57,7 +58,11 @@ func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ouri
 	} else {
 		expectedHalfMovesRemaining = int(float32(totalMaterial)/100*5/4 - 30)
 	}
-	return ourtime / expectedHalfMovesRemaining
+	return expectedHalfMovesRemaining
+}
+
+func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
+	return ourtime / EstimateHalfmovesLeft(b)
 }
 
 // After a certain period of time, sends a signal to halt the search,
@@ -199,6 +204,7 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, stop *bool) int16 
 	if *stop {
 		return alpha
 	}
+	found, _, eval, depth, type = transtable.Get(b) // TODO
 	standPat := eval.Evaluate(b)
 	if standPat >= beta {
 		return beta
