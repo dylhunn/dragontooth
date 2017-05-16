@@ -63,21 +63,21 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 	var i int8
 	var lastMove dragontoothmg.Move
 	for i = 1; ; i++ { // iterative deepening
-		threadsToSpawn := 1
+		threadsToSpawn := DefaultSearchThreads
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
 		evals := make([]int16, threadsToSpawn)
 		movesChan := make(chan dragontoothmg.Move)
 		evalsChan := make(chan int16)
 		for thread := 0; thread < threadsToSpawn; thread++ {
 			boardCopy := *board
-			abWrapper(&boardCopy, negInf, posInf, i, halt, stop, movesChan, evalsChan)
+			go abWrapper(&boardCopy, negInf, posInf, i, halt, stop, movesChan, evalsChan)
 		}
 		for thread := 0; thread < threadsToSpawn; thread++ { // collect the results
 			moves[thread], evals[thread] = <-movesChan, <-evalsChan
 		}
-		for thread := 0; thread < threadsToSpawn - 1; thread++ { // collect the results
+		for thread := 0; thread < threadsToSpawn - 1; thread++ {
 			if moves[thread] != moves[thread+1] || evals[thread] != evals[thread+1] {
-				fmt.Println("Search threads returned inconsistent results.")
+				fmt.Println("info string Search threads returned inconsistent results.")
 			}
 		}
 		eval, move := evals[0], moves[0]
