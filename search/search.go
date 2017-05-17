@@ -22,7 +22,7 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 	var pv string = startmove.String()
 	b.Apply(startmove)
 	for {
-		found, tableMove, _, depth, _ := transtable.Get(&b)
+		found, tableMove, tableEval, depth, _ := transtable.Get(&b)
 		if !found || depth == 0 {
 			break
 		}
@@ -37,6 +37,9 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 		if isLegal {
 			b.Apply(tableMove)
 			pv += " " + tableMove.String()
+		} else if tableMove == 0 && (tableEval <= negInf || tableEval >= posInf) {
+			// This is a mate
+			return pv
 		} else {
 			fmt.Println("info string Failed table PV lookup. Table gives invalid next move",
 				&tableMove, tableMove, "with PV", pv, "for position", b.ToFen())
@@ -86,8 +89,8 @@ var nodeCount int = 0 // Used for search statistics
 func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 	var i int8
 	var lastMove dragontoothmg.Move
-	for i = 2; ; i += 2 { // iterative deepening
-		threadsToSpawn := 1//DefaultSearchThreads
+	for i = 1; ; i++ { // iterative deepening
+		threadsToSpawn := 1 //DefaultSearchThreads
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
 		evals := make([]int16, threadsToSpawn)
 		movesChan := make(chan dragontoothmg.Move)
@@ -119,15 +122,21 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 		if *stop { // computation was truncated
 			fmt.Println("bestmove", &lastMove)
 			return
-		} else if eval == negInf || eval == posInf { // we found a mate; wait for the stop
-			*stop = <-halt
-			fmt.Println("bestmove", &lastMove)
-			return
 		} else { // valid results
 			fmt.Println("info depth", i, "score cp", eval, "pv", lookupPv(*board, move), "time",
 				timeElapsed.Nanoseconds()/1000000, "hashfull", int(transtable.Load()*1000), "nodes",
 				nodeCount, "nps", int(float64(nodeCount)/(timeElapsed.Seconds())))
 			lastMove = move
+			if eval <= negInf || eval >= posInf { // we found a mate; wait for the stop
+				mateInPly := i
+				if eval <= negInf { // negate if we are mated
+					mateInPly = -mateInPly
+				}
+				fmt.Println("info score mate", mateInPly / 2)
+				*stop = <-halt
+				fmt.Println("bestmove", &lastMove)
+				return
+			}
 		}
 	}
 }
@@ -174,8 +183,11 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 
 	alpha0 := alpha
 	bestVal := int16(negInf)
-	var bestMove dragontoothmg.Move
 	moves := b.GenerateLegalMoves()
+	var bestMove dragontoothmg.Move
+	if len(moves) > 0 {
+		bestMove = moves[0] // randomly pick some move
+	}
 	for _, move := range moves {
 		unapply := b.Apply(move)
 		var score int16
