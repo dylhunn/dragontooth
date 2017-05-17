@@ -22,8 +22,8 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
 	var pv string = startmove.String()
 	b.Apply(startmove)
 	for {
-		found, tableMove, _, _, _ := transtable.Get(&b)
-		if !found {
+		found, tableMove, _, depth, _ := transtable.Get(&b)
+		if !found || depth == 0 {
 			break
 		}
 		legalMoves := b.GenerateLegalMoves()
@@ -204,8 +204,14 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, stop *bool) int16 
 	if *stop {
 		return alpha
 	}
-	found, _, eval, depth, type = transtable.Get(b) // TODO
-	standPat := eval.Evaluate(b)
+	var standPat int16
+	found, _, evalresult, _, ntype := transtable.Get(b)
+	if found && ntype == transtable.Exact {
+		standPat = evalresult
+	} else {
+		standPat = eval.Evaluate(b)
+		transtable.Put(b, 0, standPat, 0, transtable.Exact)
+	}
 	if standPat >= beta {
 		return beta
 	}
