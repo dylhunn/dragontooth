@@ -86,8 +86,8 @@ var nodeCount int = 0 // Used for search statistics
 func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 	var i int8
 	var lastMove dragontoothmg.Move
-	for i = 1; ; i++ { // iterative deepening
-		threadsToSpawn := DefaultSearchThreads
+	for i = 2; ; i += 2 { // iterative deepening
+		threadsToSpawn := 1//DefaultSearchThreads
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
 		evals := make([]int16, threadsToSpawn)
 		movesChan := make(chan dragontoothmg.Move)
@@ -105,8 +105,13 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 		}
 		// Sanity check: results should be the same
 		for thread := 0; thread < threadsToSpawn-1; thread++ {
-			if moves[thread] != moves[thread+1] || evals[thread] != evals[thread+1] {
-				fmt.Println("info string Search threads returned inconsistent results.")
+			if moves[thread].String() != moves[thread+1].String() {
+				fmt.Println("info string Search threads returned inconsistent results:",
+					moves[thread].String(), moves[thread+1].String())
+			}
+			if evals[thread] != evals[thread+1] {
+				fmt.Println("info string Search threads returned inconsistent evals:",
+					evals[thread], evals[thread+1])
 			}
 		}
 		timeElapsed := time.Since(start)
@@ -114,8 +119,12 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 		if *stop { // computation was truncated
 			fmt.Println("bestmove", &lastMove)
 			return
+		} else if eval == negInf || eval == posInf { // we found a mate; wait for the stop
+			*stop = <-halt
+			fmt.Println("bestmove", &lastMove)
+			return
 		} else { // valid results
-			fmt.Println("info depth", i, "pv", lookupPv(*board, move), "score cp", eval, "time",
+			fmt.Println("info depth", i, "score cp", eval, "pv", lookupPv(*board, move), "time",
 				timeElapsed.Nanoseconds()/1000000, "hashfull", int(transtable.Load()*1000), "nodes",
 				nodeCount, "nps", int(float64(nodeCount)/(timeElapsed.Seconds())))
 			lastMove = move

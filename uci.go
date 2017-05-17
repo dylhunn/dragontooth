@@ -139,7 +139,7 @@ func uciLoop() {
 				go search.SearchTimeout(haltchannel, allowedTime, &stop)
 			}
 		case "stop":
-			haltchannel <- true
+			haltchannel <- true // TODO(dylhunn): stop deadlock on double stop
 		case "position":
 			posScanner := bufio.NewScanner(strings.NewReader(line))
 			posScanner.Split(bufio.ScanWords)
