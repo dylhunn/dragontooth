@@ -14,6 +14,10 @@ import (
 const versionString = "0.1 'Azazel'"
 
 func main() {
+	/*b := dragontoothmg.ParseFen("2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 w - - 0 1")
+	hc := make(chan bool)
+	stop := false
+	search.Search(&b, hc, &stop)*/
 	uciLoop()
 }
 

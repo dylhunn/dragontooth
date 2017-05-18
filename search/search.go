@@ -16,6 +16,8 @@ var DefaultSearchThreads int = 4
 const negInf = math.MinInt16 + 2
 const posInf = math.MaxInt16 - 1
 
+const QuiesceCutoffDepth = 5
+
 // Using the transposition table, attempt to reconstruct the rest of the PV
 // (after the first move).
 func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
@@ -90,7 +92,7 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 	var i int8
 	var lastMove dragontoothmg.Move
 	for i = 1; ; i++ { // iterative deepening
-		threadsToSpawn := 1 //DefaultSearchThreads
+		threadsToSpawn := DefaultSearchThreads
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
 		evals := make([]int16, threadsToSpawn)
 		movesChan := make(chan dragontoothmg.Move)
@@ -178,11 +180,11 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 	}
 	if depth == 0 {
 		//return eval.Evaluate(b), 0
-		return quiesce(b, alpha, beta, stop), 0
+		return quiesce(b, alpha, beta, depth, stop), 0
 	}
 
 	alpha0 := alpha
-	bestVal := int16(negInf)
+	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
 	moves := b.GenerateLegalMoves()
 	var bestMove dragontoothmg.Move
 	if len(moves) > 0 {
@@ -220,7 +222,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan b
 	return bestVal, bestMove
 }
 
-func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, stop *bool) int16 {
+func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *bool) int16 {
 	nodeCount++
 	if *stop {
 		return alpha
@@ -233,6 +235,9 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, stop *bool) int16 
 		standPat = eval.Evaluate(b)
 		transtable.Put(b, 0, standPat, 0, transtable.Exact)
 	}
+	if depth < -QuiesceCutoffDepth {
+		return standPat
+	}
 	if standPat >= beta {
 		return beta
 	}
@@ -240,12 +245,15 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, stop *bool) int16 
 		alpha = standPat
 	}
 	moves := b.GenerateLegalMoves()
+	if len(moves) == 0 { // TODO(dylhunn): What about stalemate?
+		return negInf
+	}
 	for _, move := range moves {
 		if !isCapture(move, b) {
 			continue
 		}
 		unapply := b.Apply(move)
-		score := -quiesce(b, -beta, -alpha, stop)
+		score := -quiesce(b, -beta, -alpha, depth-1, stop)
 		unapply()
 		if score >= beta {
 			return beta
