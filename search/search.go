@@ -68,7 +68,7 @@ func EstimateHalfmovesLeft(b *dragontoothmg.Board) int {
 
 func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
 	result := ourtime / EstimateHalfmovesLeft(b)
-	if ourtime < 0 || result < 0 {
+	if result <= 0 {
 		return 100
 	}
 	return result
@@ -159,16 +159,6 @@ func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt
 // Perform the alpha-beta search.
 func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool, stop *bool) (int16, dragontoothmg.Move) {
 	nodeCount++
-	select {
-	case <-halt:
-		*stop = true
-		return alpha, 0 // TODO(dylhunn): Is this a reasonable value to return?
-	default: // continue execution
-	}
-	if *stop {
-		return alpha, 0
-	}
-
 	found, tableMove, tableEval, tableDepth, tableNodeType := transtable.Get(b)
 	if found && tableDepth >= depth {
 		if tableNodeType == transtable.Exact {
@@ -178,7 +168,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 		} else { // upperbound
 			beta = min(beta, tableEval)
 		}
-		if alpha >= beta {
+		if alpha >= beta && tableMove != 0 {
 			return tableEval, tableMove
 		}
 	}
@@ -194,6 +184,17 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	if len(moves) > 0 {
 		bestMove = moves[0] // randomly pick some move
 	}
+
+	select {
+	case <-halt:
+		*stop = true
+		return eval.Evaluate(b), bestMove // TODO(dylhunn): Is this a reasonable value to return?
+	default: // continue execution
+	}
+	if *stop {
+		return eval.Evaluate(b), bestMove
+	}
+
 	for _, move := range moves {
 		unapply := b.Apply(move)
 		var score int16
