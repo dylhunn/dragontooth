@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-var DefaultSearchThreads int = 4
+var DefaultSearchThreads int = 1
 
 // Both constants are negatable and +1able without overflowing
 const negInf = math.MinInt16 + 2
@@ -20,10 +20,10 @@ const QuiesceCutoffDepth = 5
 
 // Using the transposition table, attempt to reconstruct the rest of the PV
 // (after the first move).
-func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move) string {
+func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move, depth int) string {
 	var pv string = startmove.String()
 	b.Apply(startmove)
-	for {
+	for i := depth; i >= 0; i-- {
 		found, tableMove, tableEval, depth, _ := transtable.Get(&b)
 		if !found || depth == 0 {
 			break
@@ -67,22 +67,23 @@ func EstimateHalfmovesLeft(b *dragontoothmg.Board) int {
 }
 
 func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
-	if ourtime < 0 {
+	result := ourtime / EstimateHalfmovesLeft(b)
+	if ourtime < 0 || result < 0 {
 		return 100
 	}
-	return ourtime / EstimateHalfmovesLeft(b)
+	return result
 }
 
 // After a certain period of time, sends a signal to halt the search,
 // if it has not already been sent.
 // Also prints the best move. If the sleep time is 0, does nothing.
 // The bool pointer alreadyStopped should be the same as the one given to Search().
-func SearchTimeout(halt chan bool, ms int, alreadyStopped *bool) {
+func SearchTimeout(halt chan<- bool, ms int, alreadyStopped *bool) {
 	if ms == 0 {
 		return
 	}
 	time.Sleep(time.Duration(ms) * time.Millisecond)
-	if !*alreadyStopped { // don't send the halt signal if the search has already been stopped
+	if !(*alreadyStopped) { // don't send the halt signal if the search has already been stopped
 		halt <- true
 	}
 }
@@ -91,7 +92,7 @@ var nodeCount int = 0 // Used for search statistics
 
 // The main entrypoint for the search. Spawns the appropriate number of threads,
 // and prints the results (including pv and bestmove).
-func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
+func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 	var i int8
 	var lastMove dragontoothmg.Move
 	for i = 1; ; i++ { // iterative deepening
@@ -128,7 +129,7 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 			fmt.Println("bestmove", &lastMove)
 			return
 		} else { // valid results
-			fmt.Println("info depth", i, "score cp", eval, "pv", lookupPv(*board, move), "time",
+			fmt.Println("info depth", i, "score cp", eval, "pv", lookupPv(*board, move, int(i)), "time",
 				timeElapsed.Nanoseconds()/1000000, "hashfull", int(transtable.Load()*1000), "nodes",
 				nodeCount, "nps", int(float64(nodeCount)/(timeElapsed.Seconds())))
 			lastMove = move
@@ -148,15 +149,15 @@ func Search(board *dragontoothmg.Board, halt chan bool, stop *bool) {
 
 // Wraps the ab-search function at full-depth, so the return values can be sent over
 // the channels.
-func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool,
-	stop *bool, moveChan chan dragontoothmg.Move, evalChan chan int16) {
+func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool,
+	stop *bool, moveChan chan<- dragontoothmg.Move, evalChan chan<- int16) {
 	eval, move := ab(b, alpha, beta, depth, halt, stop)
 	moveChan <- move
 	evalChan <- eval
 }
 
 // Perform the alpha-beta search.
-func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt chan bool, stop *bool) (int16, dragontoothmg.Move) {
+func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool, stop *bool) (int16, dragontoothmg.Move) {
 	nodeCount++
 	select {
 	case <-halt:
