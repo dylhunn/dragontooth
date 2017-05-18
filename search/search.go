@@ -67,6 +67,9 @@ func EstimateHalfmovesLeft(b *dragontoothmg.Board) int {
 }
 
 func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
+	if ourtime < 0 {
+		return 100
+	}
 	return ourtime / EstimateHalfmovesLeft(b)
 }
 

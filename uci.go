@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const versionString = "0.1 'Azazel'"
+var VersionString = "0.1 Azazel " + strconv.Itoa(search.DefaultSearchThreads) + "cpu"
 
 func main() {
 	/*b := dragontoothmg.ParseFen("2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 w - - 0 1")
@@ -34,7 +34,7 @@ func uciLoop() {
 		}
 		switch strings.ToLower(tokens[0]) {
 		case "uci":
-			fmt.Println("id name Dragontooth", versionString)
+			fmt.Println("id name Dragontooth", VersionString)
 			fmt.Println("id author Dylan D. Hunn (dylhunn)")
 			fmt.Println("option name Hash type spin default", transtable.DefaultTtableSize, "min 8 max 65536")
 			fmt.Println("option name SearchThreads type spin default", search.DefaultSearchThreads, "min 1 max 128")
