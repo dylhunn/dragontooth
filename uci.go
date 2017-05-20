@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-var VersionString = "0.1 Azazel " + strconv.Itoa(search.DefaultSearchThreads) + "cpu"
+var VersionString = "0.1 Azazel " + strconv.Itoa(search.DefaultSearchThreads) + "CPU"
 
 func main() {
 	/*b := dragontoothmg.ParseFen("2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 w - - 0 1")
@@ -37,7 +37,7 @@ func uciLoop() {
 			fmt.Println("id name Dragontooth", VersionString)
 			fmt.Println("id author Dylan D. Hunn (dylhunn)")
 			fmt.Println("option name Hash type spin default", transtable.DefaultTtableSize, "min 8 max 65536")
-			fmt.Println("option name SearchThreads type spin default", search.DefaultSearchThreads, "min 1 max 128")
+			//fmt.Println("option name SearchThreads type spin default", search.DefaultSearchThreads, "min 1 max 128")
 			fmt.Println("uciok")
 		case "isready":
 			fmt.Println("readyok")
@@ -62,13 +62,13 @@ func uciLoop() {
 				fmt.Println("info string Changed table size. Clearing and reloading table...")
 				transtable.DefaultTtableSize = res // reset the size and reload the table
 				transtable.Initialize(transtable.DefaultTtableSize)
-			case "searchthreads":
+			/*case "searchthreads":
 				res, err := strconv.Atoi(tokens[4])
 				if err != nil {
 					fmt.Println("info string Number of threads is not an int (", err, ")")
 					continue
 				}
-				search.DefaultSearchThreads = res
+				search.DefaultSearchThreads = res*/
 			default:
 				fmt.Println("info string Unknown UCI option", tokens[2])
 			}

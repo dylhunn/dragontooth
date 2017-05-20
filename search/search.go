@@ -150,8 +150,29 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 	}
 }
 
+// Use a collection of heuristics to sort the moves in their best order.
+func sortMoves(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, 
+	halt <-chan bool, stop *bool, moves *[]dragontoothmg.Move) {
+	found, tableMove, _, _, _ := transtable.Get(b)
+	if (!found || tableMove == 0) { // use IID to guess the best move
+		var resMove dragontoothmg.Move
+		for i := int8(0); i < depth - 1; i++ {
+			_, resMove = ab(b, alpha, beta, i, halt, stop)
+		}
+		found, tableMove = true, resMove
+	}
+	if (found && tableMove != 0) {
+		for i := 0; i < len(*moves); i++ {
+			if (*moves)[i].String() == tableMove.String() {
+				(*moves)[0], (*moves)[i] = (*moves)[i], (*moves)[0]
+				break
+			}
+		}
+	}
+}
+
 // Wraps the ab-search function at full-depth, so the return values can be sent over
-// the channels.
+// the channels for goroutine invocations.
 func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool,
 	stop *bool, moveChan chan<- dragontoothmg.Move, evalChan chan<- int16) {
 	eval, move := ab(b, alpha, beta, depth, halt, stop)
@@ -183,6 +204,14 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	alpha0 := alpha
 	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
 	moves := b.GenerateLegalMoves()
+	if len(moves) == 0 {
+		if (b.OurKingInCheck()) { // checkmate
+			return negInf, 0
+		} else {
+			return 0, 0 // stalemate
+		}
+	}
+	sortMoves(b, alpha, beta, depth, halt, stop, &moves)
 	var bestMove dragontoothmg.Move
 	if len(moves) > 0 {
 		bestMove = moves[0] // randomly pick some move
@@ -230,6 +259,13 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	return bestVal, bestMove
 }
 
+// Sort capture moves using MVV-LVA. Remove any non-capture moves.
+func sortCaptureMoves(b *dragontoothmg.Board, moves *[]dragontoothmg.Move) {
+	// TODO
+}
+
+// Quiescence search explores moves until a quiet position is reached, but cutting
+// of at a certain depth.
 func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *bool) int16 {
 	nodeCount++
 	if *stop {
@@ -253,9 +289,14 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *
 		alpha = standPat
 	}
 	moves := b.GenerateLegalMoves()
-	if len(moves) == 0 { // TODO(dylhunn): What about stalemate?
-		return negInf
+	if len(moves) == 0 {
+		if (b.OurKingInCheck()) {
+			return negInf
+		} else {
+			return 0 // stalemate
+		}
 	}
+	sortCaptureMoves(b, &moves)
 	for _, move := range moves {
 		if !isCapture(move, b) {
 			continue
