@@ -141,7 +141,7 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 				if eval <= negInf { // negate if we are mated
 					mateInPly = -mateInPly
 				}
-				fmt.Println("info score mate", mateInPly / 2)
+				fmt.Println("info score mate", mateInPly/2)
 				*stop = <-halt
 				fmt.Println("bestmove", &lastMove)
 				return
@@ -151,17 +151,17 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 }
 
 // Use a collection of heuristics to sort the moves in their best order.
-func sortMoves(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, 
+func sortMoves(b *dragontoothmg.Board, alpha int16, beta int16, depth int8,
 	halt <-chan bool, stop *bool, moves *[]dragontoothmg.Move) {
 	found, tableMove, _, _, _ := transtable.Get(b)
-	if (!found || tableMove == 0) { // use IID to guess the best move
+	if !found || tableMove == 0 { // use IID to guess the best move
 		var resMove dragontoothmg.Move
-		for i := int8(0); i < depth - 1; i++ {
+		for i := int8(0); i < depth-1; i++ {
 			_, resMove = ab(b, alpha, beta, i, halt, stop)
 		}
 		found, tableMove = true, resMove
 	}
-	if (found && tableMove != 0) {
+	if found && tableMove != 0 {
 		for i := 0; i < len(*moves); i++ {
 			if (*moves)[i].String() == tableMove.String() {
 				(*moves)[0], (*moves)[i] = (*moves)[i], (*moves)[0]
@@ -205,7 +205,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
 	moves := b.GenerateLegalMoves()
 	if len(moves) == 0 {
-		if (b.OurKingInCheck()) { // checkmate
+		if b.OurKingInCheck() { // checkmate
 			return negInf, 0
 		} else {
 			return 0, 0 // stalemate
@@ -290,7 +290,7 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *
 	}
 	moves := b.GenerateLegalMoves()
 	if len(moves) == 0 {
-		if (b.OurKingInCheck()) {
+		if b.OurKingInCheck() {
 			return negInf
 		} else {
 			return 0 // stalemate
@@ -298,7 +298,7 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *
 	}
 	sortCaptureMoves(b, &moves)
 	for _, move := range moves {
-		if !isCapture(move, b) {
+		if !dragontoothmg.IsCapture(move, b) {
 			continue
 		}
 		unapply := b.Apply(move)
@@ -312,11 +312,6 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *
 		}
 	}
 	return alpha
-}
-
-func isCapture(m dragontoothmg.Move, b *dragontoothmg.Board) bool {
-	toBitboard := (uint64(1) << m.To())
-	return (toBitboard&b.White.All != 0) || (toBitboard&b.Black.All != 0)
 }
 
 func min(x, y int16) int16 {

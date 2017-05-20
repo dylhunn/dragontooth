@@ -63,12 +63,12 @@ func uciLoop() {
 				transtable.DefaultTtableSize = res // reset the size and reload the table
 				transtable.Initialize(transtable.DefaultTtableSize)
 			/*case "searchthreads":
-				res, err := strconv.Atoi(tokens[4])
-				if err != nil {
-					fmt.Println("info string Number of threads is not an int (", err, ")")
-					continue
-				}
-				search.DefaultSearchThreads = res*/
+			res, err := strconv.Atoi(tokens[4])
+			if err != nil {
+				fmt.Println("info string Number of threads is not an int (", err, ")")
+				continue
+			}
+			search.DefaultSearchThreads = res*/
 			default:
 				fmt.Println("info string Unknown UCI option", tokens[2])
 			}
