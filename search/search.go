@@ -94,7 +94,7 @@ var nodeCount int = 0 // Used for search statistics
 // and prints the results (including pv and bestmove).
 func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 	var i int8
-	var lastMove dragontoothmg.Move
+	var lastMove dragontoothmg.Move = 0
 	for i = 1; ; i++ { // iterative deepening
 		threadsToSpawn := DefaultSearchThreads
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
@@ -125,6 +125,9 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 		}
 		timeElapsed := time.Since(start)
 		eval, move := evals[0], moves[0]
+		if lastMove == 0 {
+			lastMove = move
+		}
 		if *stop { // computation was truncated
 			fmt.Println("bestmove", &lastMove)
 			return
