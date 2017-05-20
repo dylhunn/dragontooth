@@ -147,8 +147,21 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 	}
 }
 
+// Use a collection of heuristics to sort the moves in their best order
+func sortMoves(b *dragontoothmg.Board, moves *[]dragontoothmg.Move) {
+	found, tableMove, _, _, _ := transtable.Get(b)
+	if (found && tableMove != 0) {
+		for i := 0; i < len(*moves); i++ {
+			if (*moves)[i].String() == tableMove.String() {
+				(*moves)[0], (*moves)[i] = (*moves)[i], (*moves)[0]
+				break
+			}
+		}
+	}
+}
+
 // Wraps the ab-search function at full-depth, so the return values can be sent over
-// the channels.
+// the channels for goroutine invocations.
 func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool,
 	stop *bool, moveChan chan<- dragontoothmg.Move, evalChan chan<- int16) {
 	eval, move := ab(b, alpha, beta, depth, halt, stop)
@@ -180,6 +193,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	alpha0 := alpha
 	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
 	moves := b.GenerateLegalMoves()
+	sortMoves(b, &moves)
 	var bestMove dragontoothmg.Move
 	if len(moves) > 0 {
 		bestMove = moves[0] // randomly pick some move
@@ -227,6 +241,8 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	return bestVal, bestMove
 }
 
+// Quiescence search explores moves until a quiet position is reached, but cutting
+// of at a certain depth.
 func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *bool) int16 {
 	nodeCount++
 	if *stop {
