@@ -201,6 +201,13 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	alpha0 := alpha
 	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
 	moves := b.GenerateLegalMoves()
+	if len(moves) == 0 {
+		if (b.OurKingInCheck()) { // checkmate
+			return negInf, 0
+		} else {
+			return 0, 0 // stalemate
+		}
+	}
 	sortMoves(b, alpha, beta, depth, halt, stop, &moves)
 	var bestMove dragontoothmg.Move
 	if len(moves) > 0 {
@@ -249,6 +256,11 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	return bestVal, bestMove
 }
 
+// Sort capture moves using MVV-LVA. Remove any non-capture moves.
+func sortCaptureMoves(b *dragontoothmg.Board, moves *[]dragontoothmg.Move) {
+	// TODO
+}
+
 // Quiescence search explores moves until a quiet position is reached, but cutting
 // of at a certain depth.
 func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *bool) int16 {
@@ -274,9 +286,14 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *
 		alpha = standPat
 	}
 	moves := b.GenerateLegalMoves()
-	if len(moves) == 0 { // TODO(dylhunn): What about stalemate?
-		return negInf
+	if len(moves) == 0 {
+		if (b.OurKingInCheck()) {
+			return negInf
+		} else {
+			return 0 // stalemate
+		}
 	}
+	sortCaptureMoves(b, &moves)
 	for _, move := range moves {
 		if !isCapture(move, b) {
 			continue
