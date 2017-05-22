@@ -7,14 +7,15 @@ import (
 	"github.com/dylhunn/dragontoothmg"
 	"math"
 	"math/rand"
+	"runtime"
 	"time"
 )
 
-var DefaultSearchThreads int = 1
+var DefaultSearchThreads int = runtime.NumCPU()
 
 // Both constants are negatable and +1able without overflowing
-const negInf = math.MinInt16 + 2
-const posInf = math.MaxInt16 - 1
+const NegInf = math.MinInt16 + 2
+const PosInf = math.MaxInt16 - 1
 
 const QuiesceCutoffDepth = 5
 
@@ -39,7 +40,7 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move, depth int) st
 		if isLegal {
 			b.Apply(tableMove)
 			pv += " " + tableMove.String()
-		} else if tableMove == 0 && (tableEval <= negInf || tableEval >= posInf) {
+		} else if tableMove == 0 && (tableEval <= NegInf || tableEval >= PosInf) {
 			// This is a mate
 			return pv
 		} else {
@@ -51,23 +52,8 @@ func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move, depth int) st
 	return pv
 }
 
-// Returns an estimate of the total number of halfmoves left in the game
-func EstimateHalfmovesLeft(b *dragontoothmg.Board) int {
-	// This material counting formula is taken from the research of V. VUČKOVIĆ and R. ŠOLAK
-	totalMaterial := eval.CountMaterial(&b.White) + eval.CountMaterial(&b.Black)
-	var expectedHalfMovesRemaining int
-	if totalMaterial < 2000 {
-		expectedHalfMovesRemaining = int(float32(totalMaterial)/100 + 10)
-	} else if totalMaterial <= 6000 {
-		expectedHalfMovesRemaining = int(((float32(totalMaterial)/100)*3)/8 + 22)
-	} else {
-		expectedHalfMovesRemaining = int(float32(totalMaterial)/100*5/4 - 30)
-	}
-	return expectedHalfMovesRemaining
-}
-
 func CalculateAllowedTime(b *dragontoothmg.Board, ourtime int, opptime int, ourinc int, oppinc int) int {
-	result := ourtime / EstimateHalfmovesLeft(b)
+	result := ourtime / eval.EstimateHalfmovesLeft(b)
 	if result <= 0 {
 		return 100
 	}
@@ -106,7 +92,7 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 		// Start the search threads
 		for thread := 0; thread < threadsToSpawn; thread++ {
 			boardCopy := *board
-			go abWrapper(&boardCopy, negInf, posInf, i, halt, stop, movesChan, evalsChan)
+			go abWrapper(&boardCopy, NegInf, PosInf, i, halt, stop, movesChan, evalsChan)
 		}
 		// Block until the search stops, then collect the results
 		for thread := 0; thread < threadsToSpawn; thread++ {
@@ -136,9 +122,9 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 				timeElapsed.Nanoseconds()/1000000, "hashfull", int(transtable.Load()*1000), "nodes",
 				nodeCount, "nps", int(float64(nodeCount)/(timeElapsed.Seconds())))
 			lastMove = move
-			if eval <= negInf || eval >= posInf { // we found a mate; wait for the stop
+			if eval <= NegInf || eval >= PosInf { // we found a mate; wait for the stop
 				mateInPly := i
-				if eval <= negInf { // negate if we are mated
+				if eval <= NegInf { // negate if we are mated
 					mateInPly = -mateInPly
 				}
 				fmt.Println("info score mate", mateInPly/2)
@@ -206,13 +192,13 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	}
 
 	alpha0 := alpha
-	bestVal := int16(negInf) 
+	bestVal := int16(NegInf) 
 	moves := b.GenerateLegalMoves()
 	if len(moves) == 0 || b.Halfmoveclock >= 100 {
 		if b.OurKingInCheck() { // checkmate
-			return negInf, 0
+			return NegInf, 0
 		} else {
-			return 0, 0 // stalemate
+			return eval.DefaultDrawScore, 0 // stalemate
 		}
 	}
 	sortMoves(b, alpha, beta, depth, halt, stop, &moves)
@@ -295,9 +281,9 @@ func quiesce(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, stop *
 	moves := b.GenerateLegalMoves()
 	if len(moves) == 0 {
 		if b.OurKingInCheck() {
-			return negInf
+			return NegInf
 		} else {
-			return 0 // stalemate
+			return eval.DefaultDrawScore // stalemate
 		}
 	}
 	sortCaptureMoves(b, &moves)
