@@ -95,7 +95,7 @@ var nodeCount int = 0 // Used for search statistics
 func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 	var i int8
 	var lastMove dragontoothmg.Move = 0
-	for i = 1; ; i++ { // iterative deepening
+	for i = 1; i < math.MaxInt8; i++ { // iterative deepening
 		threadsToSpawn := DefaultSearchThreads
 		moves := make([]dragontoothmg.Move, threadsToSpawn)
 		evals := make([]int16, threadsToSpawn)
@@ -147,6 +147,10 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 				return
 			}
 		}
+	}
+	if i ==  math.MaxInt8 { // We reached max depth; wait for the stop signal
+		*stop = <-halt
+		fmt.Println("bestmove", &lastMove)
 	}
 }
 
@@ -202,9 +206,9 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	}
 
 	alpha0 := alpha
-	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
+	bestVal := int16(negInf) 
 	moves := b.GenerateLegalMoves()
-	if len(moves) == 0/* || b.Halfmoveclock >= 100*/ {
+	if len(moves) == 0 || b.Halfmoveclock >= 100 {
 		if b.OurKingInCheck() { // checkmate
 			return negInf, 0
 		} else {
