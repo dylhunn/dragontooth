@@ -15,6 +15,32 @@ var onlyRank = [8]uint64{
 	0XFF00000000, 0XFF0000000000, 0XFF000000000000, 0XFF00000000000000}
 
 func main() {
+	// Generate isolated pawn tables
+	resarr := make([]uint64, 64, 64)
+	for i := 0; i < 64; i++ { // for every index
+		var clear uint64
+		for j := 7; j >= 0; j-- {
+			clear |= uint64(1) << uint(j * 8 + (i % 8))
+		}
+		if i % 8 != 0 {
+			clear |= clear >> 1
+		}
+		if i % 8 != 7 {
+			clear |= clear << 1
+		}
+		fmt.Printf("%d: %x\n", i, clear)
+		resarr[i] = clear
+		printBitboard(clear)
+	}
+	for i, val := range resarr {
+		if i % 4 == 0 {
+			fmt.Println()
+		}
+		fmt.Printf("0x%x, ", val)
+	}
+}
+
+func blackpassedpawns() {
 	// Generate passed pawn tables
 	resarr := make([]uint64, 64, 64)
 	for i := 0; i < 64; i++ { // for every index

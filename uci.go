@@ -149,6 +149,23 @@ func uciLoop() {
 				allowedTime := search.CalculateAllowedTime(&board, ourtime, opptime, ourinc, oppinc)
 				go search.SearchTimeout(haltchannel, allowedTime, &stop)
 			}
+		case "secretparam": // secret parameters used for optimizing the evaluation function
+			res, _ := strconv.Atoi(tokens[2])
+			switch tokens[1] {
+			case "BishopPairBonus":
+				eval.BishopPairBonus = res
+			case "DiagonalMobilityBonus":
+				eval.DiagonalMobilityBonus = res
+			case "OrthogonalMobilityBonus":
+				eval.OrthogonalMobilityBonus = res
+			case "DoubledPawnPenalty":
+				eval.DoubledPawnPenalty = res
+			case "PassedPawnBonus":
+				eval.PassedPawnBonus = res
+			case "IsolatedPawnPenalty":
+				eval.IsolatedPawnPenalty = res
+			default:
+			}
 		case "stop":
 			haltchannel <- true // TODO(dylhunn): stop deadlock on double stop
 		case "position":

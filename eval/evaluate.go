@@ -16,11 +16,12 @@ const bishopValue = 330
 const rookValue = 500
 const queenValue = 900
 
-const bishopPairBonus = 30
-const diagonalMobilityBonus = 4
-const orthogonalMobilityBonus = 4
-const doubledPawnPenalty = 20
-const passedPawnBonus = 25
+var BishopPairBonus int = 30
+var DiagonalMobilityBonus int = 4
+var OrthogonalMobilityBonus int = 4
+var DoubledPawnPenalty int = 20
+var PassedPawnBonus int = 25
+var IsolatedPawnPenalty int = 15
 
 var pawnTableStart = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -52,7 +53,7 @@ var kingTableStart = [64]int{
 	2, 2, 1, 1, 1, 1, 2, 2,
 	5, 5, 3, 3, 3, 3, 5, 5,
 	10, 10, 7, 7, 7, 7, 10, 10,
-	20, 25, 50, 20, 25, 25, 50, 20,
+	20, 25, 50, 20, 25, 20, 50, 20,
 }
 
 var centralizeTable = [64]int{
@@ -108,6 +109,12 @@ var blackPassedPawnTable = [64]uint64{
 	0x38383838383838, 0x70707070707070, 0xe0e0e0e0e0e0e0, 0xc0c0c0c0c0c0c0,
 }
 
+// For a given file, that file and the adjacent files are activated
+var isolatedPawnTable = [8]uint64{
+	0x303030303030303, 0x707070707070707, 0xe0e0e0e0e0e0e0e, 0x1c1c1c1c1c1c1c1c, 
+	0x3838383838383838, 0x7070707070707070, 0xe0e0e0e0e0e0e0e0, 0xc0c0c0c0c0c0c0c0, 
+}
+
 // Only activate one file, A-H (A=0, H=7)
 var onlyFile = [8]uint64{
 	0x0101010101010101, 0x0202020202020202, 0x0404040404040404, 0x0808080808080808,
@@ -144,11 +151,20 @@ func Evaluate(b *dragontoothmg.Board) int16 {
 	score += sliderMobilityBonuses(b)
 	score += pawnDoublingPenalties(b)
 	score += passedPawnBonuses(b)
+	score += isolatedPawnPenalties(b)
+	score += kingSafetyBonuses(b)
+	score += connectedRookBonus(b)
 
 	if !b.Wtomove {
 		score = -score
 	}
 	return int16(score)
+}
+
+func kingSafetyBonuses(b *dragontoothmg.Board) int {
+	var score int
+
+	return score
 }
 
 func passedPawnBonuses(b *dragontoothmg.Board) int {
@@ -159,15 +175,41 @@ func passedPawnBonuses(b *dragontoothmg.Board) int {
 		idx := bits.TrailingZeros64(whitePawns)
 		whitePawns &= whitePawns - 1
 		if whitePassedPawnTable[idx] & b.Black.Pawns == 0 {
-			score += passedPawnBonus
+			score += PassedPawnBonus
 		}
 	}
 	for blackPawns != 0 {
 		idx := bits.TrailingZeros64(blackPawns)
 		blackPawns &= blackPawns - 1
 		if blackPassedPawnTable[idx] & b.White.Pawns == 0 {
-			score -= passedPawnBonus
+			score -= PassedPawnBonus
 		}
+	}
+	return score
+}
+
+func isolatedPawnPenalties(b *dragontoothmg.Board) int {
+	var score int
+	whitePawns := b.White.Pawns
+	blackPawns := b.Black.Pawns
+	for whitePawns != 0 {
+		idx := bits.TrailingZeros64(whitePawns)
+		whitePawns &= whitePawns - 1
+		file := idx % 8
+		neighbors := bits.OnesCount64(isolatedPawnTable[file] & b.White.Pawns) - 1
+		if neighbors == 0 {
+			score -= IsolatedPawnPenalty
+		}
+	}
+	for blackPawns != 0 {
+		idx := bits.TrailingZeros64(blackPawns)
+		blackPawns &= blackPawns - 1
+		file := idx % 8
+		neighbors := bits.OnesCount64(isolatedPawnTable[file] & b.Black.Pawns) - 1
+		if neighbors == 0 {
+			score += IsolatedPawnPenalty
+		}
+		
 	}
 	return score
 }
@@ -181,8 +223,8 @@ func pawnDoublingPenalties(b *dragontoothmg.Board) int {
 		wDoubledPawnCount += max(bits.OnesCount64(b.White.Pawns&currFile)-1, 0)
 		bDoubledPawnCount += max(bits.OnesCount64(b.Black.Pawns&currFile)-1, 0)
 	}
-	score -= (wDoubledPawnCount * doubledPawnPenalty)
-	score += (bDoubledPawnCount * doubledPawnPenalty)
+	score -= (wDoubledPawnCount * DoubledPawnPenalty)
+	score += (bDoubledPawnCount * DoubledPawnPenalty)
 	return score
 }
 
@@ -197,25 +239,25 @@ func sliderMobilityBonuses(b *dragontoothmg.Board) int {
 		idx := uint8(bits.TrailingZeros64(whiteBishops))
 		whiteBishops &= whiteBishops - 1
 		targets := dragontoothmg.CalculateBishopMoveBitboard(idx, allPieces) & (^b.White.All)
-		score += (bits.OnesCount64(targets) * diagonalMobilityBonus)
+		score += (bits.OnesCount64(targets) * DiagonalMobilityBonus)
 	}
 	for blackBishops != 0 {
 		idx := uint8(bits.TrailingZeros64(blackBishops))
 		blackBishops &= blackBishops - 1
 		targets := dragontoothmg.CalculateBishopMoveBitboard(idx, allPieces) & (^b.Black.All)
-		score -= (bits.OnesCount64(targets) * diagonalMobilityBonus)
+		score -= (bits.OnesCount64(targets) * DiagonalMobilityBonus)
 	}
 	for whiteRooks != 0 {
 		idx := uint8(bits.TrailingZeros64(whiteRooks))
 		whiteRooks &= whiteRooks - 1
 		targets := dragontoothmg.CalculateRookMoveBitboard(idx, allPieces) & (^b.White.All)
-		score += (bits.OnesCount64(targets) * orthogonalMobilityBonus)
+		score += (bits.OnesCount64(targets) * OrthogonalMobilityBonus)
 	}
 	for blackRooks != 0 {
 		idx := uint8(bits.TrailingZeros64(blackRooks))
 		blackRooks &= blackRooks - 1
 		targets := dragontoothmg.CalculateRookMoveBitboard(idx, allPieces) & (^b.Black.All)
-		score -= (bits.OnesCount64(targets) * orthogonalMobilityBonus)
+		score -= (bits.OnesCount64(targets) * OrthogonalMobilityBonus)
 	}
 	return score
 }
@@ -225,10 +267,10 @@ func bishopPairBonuses(b *dragontoothmg.Board) int {
 	whiteBishops := bits.OnesCount64(b.White.Bishops)
 	blackBishops := bits.OnesCount64(b.White.Bishops)
 	if whiteBishops >= 2 {
-		score += bishopPairBonus
+		score += BishopPairBonus
 	}
 	if blackBishops >= 2 {
-		score -= bishopPairBonus
+		score -= BishopPairBonus
 	}
 	return score
 }
@@ -247,12 +289,12 @@ func countKingTables(b *dragontoothmg.Board) int {
 	whiteKingEndScore := centralizeTable[reflect(whiteKingIdx)]
 	blackKingStartScore := kingTableStart[blackKingIdx]
 	blackKingEndScore := centralizeTable[blackKingIdx]
-	startTableWeight := EstimateHalfmovesLeft(b)
-	endTableWeight := MaxHalfMovesLeft - startTableWeight
+	startTableWeight := CountPieces(b)
+	endTableWeight := 32 - startTableWeight
 	whiteKingCumScore := (startTableWeight*whiteKingStartScore +
-		(endTableWeight * whiteKingEndScore)) / MaxHalfMovesLeft
+		(endTableWeight * whiteKingEndScore)) / 32
 	blackKingCumScore := (startTableWeight*blackKingStartScore +
-		(endTableWeight * blackKingEndScore)) / MaxHalfMovesLeft
+		(endTableWeight * blackKingEndScore)) / 32
 	return (whiteKingCumScore - blackKingCumScore)
 }
 
@@ -280,6 +322,10 @@ func CountMaterial(bb *dragontoothmg.Bitboards) int {
 	score += bits.OnesCount64(bb.Rooks) * rookValue
 	score += bits.OnesCount64(bb.Queens) * queenValue
 	return score
+}
+
+func CountPieces(b *dragontoothmg.Board) int {
+	return bits.OnesCount64(b.White.All) + bits.OnesCount64(b.Black.All)
 }
 
 // Returns an estimate of the total number of halfmoves left in the game
