@@ -63,7 +63,7 @@ func reflect(idx uint8) uint8 {
 
 // Return a static evaluation, relative to the side to move.
 func Evaluate(b *dragontoothmg.Board) int16 {
-	if b.Halfmoveclock == 100 {
+	if b.Halfmoveclock >= 100 {
 		return 0 // It's a draw by 50 move rule.
 	}
 	var score int

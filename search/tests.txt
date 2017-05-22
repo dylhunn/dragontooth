@@ -3,3 +3,6 @@ f3f7 2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 w - - 0 1
 
 // crashing position due to infinite loop in pv table code
 8/k6p/4N2P/p2R4/8/1P6/P7/K7 b - - 2 48
+
+// crashing draw-by-50-moves position
+1k2b3/8/8/8/8/8/8/2K4R w KQkq - 99 0

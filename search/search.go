@@ -204,7 +204,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	alpha0 := alpha
 	bestVal := int16(negInf) // TODO(dylhunn) what about draws?
 	moves := b.GenerateLegalMoves()
-	if len(moves) == 0 {
+	if len(moves) == 0/* || b.Halfmoveclock >= 100*/ {
 		if b.OurKingInCheck() { // checkmate
 			return negInf, 0
 		} else {
