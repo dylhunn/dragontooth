@@ -165,7 +165,31 @@ func uciLoop() {
 				eval.PassedPawnBonus = res
 			case "IsolatedPawnPenalty":
 				eval.IsolatedPawnPenalty = res
+
 			default:
+				if tokens[1][0:14] == "PawnTableStart" {
+					idx := tokens[1][14:len(tokens[1])]
+					square, _ := strconv.Atoi(idx)
+					val, _ := strconv.Atoi(tokens[2])
+					eval.PawnTableStart[square] = val
+				} else if tokens[1][0:14] == "KingTableStart" {
+					idx := tokens[1][14:len(tokens[1])]
+					square, _ := strconv.Atoi(idx)
+					val, _ := strconv.Atoi(tokens[2])
+					eval.KingTableStart[square] = val
+				} else if tokens[1][0:15] == "CentralizeTable" {
+					idx := tokens[1][15:len(tokens[1])]
+					square, _ := strconv.Atoi(idx)
+					val, _ := strconv.Atoi(tokens[2])
+					eval.CentralizeTable[square] = val
+				} else if tokens[1][0:16] == "KnightTableStart" {
+					idx := tokens[1][16:len(tokens[1])]
+					square, _ := strconv.Atoi(idx)
+					val, _ := strconv.Atoi(tokens[2])
+					eval.KnightTableStart[square] = val
+				} else {
+					fmt.Println("Unknown secret param")
+				}
 			}
 		case "stop":
 			haltchannel <- true // TODO(dylhunn): stop deadlock on double stop

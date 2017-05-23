@@ -18,13 +18,13 @@ const queenValue = 900
 
 // These are public so that they can be changed during parameter optimization
 var BishopPairBonus int = 30
-var DiagonalMobilityBonus int = 4
-var OrthogonalMobilityBonus int = 4
-var DoubledPawnPenalty int = 20
-var PassedPawnBonus int = 25
+var DiagonalMobilityBonus int = 3
+var OrthogonalMobilityBonus int = 6
+var DoubledPawnPenalty int = 6
+var PassedPawnBonus int = 20
 var IsolatedPawnPenalty int = 15
 
-var pawnTableStart = [64]int{
+var PawnTableStart = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 	45, 50, 50, 50, 50, 50, 50, 45,
 	20, 25, 30, 35, 35, 30, 25, 20,
@@ -35,7 +35,7 @@ var pawnTableStart = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-var knightTableStart = [64]int{
+var KnightTableStart = [64]int{
 	0, 1, 3, 5, 5, 3, 1, 0,
 	1, 7, 10, 15, 15, 10, 7, 1,
 	3, 10, 30, 40, 40, 30, 10, 3,
@@ -46,7 +46,7 @@ var knightTableStart = [64]int{
 	0, 1, 3, 5, 5, 3, 1, 0,
 }
 
-var kingTableStart = [64]int{
+var KingTableStart = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -57,7 +57,7 @@ var kingTableStart = [64]int{
 	20, 25, 50, 20, 25, 20, 50, 20,
 }
 
-var centralizeTable = [64]int{
+var CentralizeTable = [64]int{
 	0, 0, 0, 3, 3, 0, 0, 0,
 	0, 20, 20, 20, 20, 20, 20, 0,
 	0, 17, 30, 30, 30, 30, 17, 0,
@@ -143,9 +143,9 @@ func Evaluate(b *dragontoothmg.Board) int16 {
 	score -= CountMaterial(&b.Black)
 
 	// Piece-square tables
-	score += countPieceTables(b.White.Pawns, b.Black.Pawns, &pawnTableStart)
-	score += countPieceTables(b.White.Knights, b.Black.Knights, &knightTableStart)
-	score += countPieceTables(b.White.Bishops, b.Black.Bishops, &centralizeTable)
+	score += countPieceTables(b.White.Pawns, b.Black.Pawns, &PawnTableStart)
+	score += countPieceTables(b.White.Knights, b.Black.Knights, &KnightTableStart)
+	score += countPieceTables(b.White.Bishops, b.Black.Bishops, &CentralizeTable)
 	score += countKingTables(b)
 
 	score += bishopPairBonuses(b)
@@ -286,10 +286,10 @@ func countKingTables(b *dragontoothmg.Board) int {
 	// Blend the king tables
 	whiteKingIdx := uint8(bits.TrailingZeros64(b.White.Kings))
 	blackKingIdx := uint8(bits.TrailingZeros64(b.Black.Kings))
-	whiteKingStartScore := kingTableStart[reflect(whiteKingIdx)]
-	whiteKingEndScore := centralizeTable[reflect(whiteKingIdx)]
-	blackKingStartScore := kingTableStart[blackKingIdx]
-	blackKingEndScore := centralizeTable[blackKingIdx]
+	whiteKingStartScore := KingTableStart[reflect(whiteKingIdx)]
+	whiteKingEndScore := CentralizeTable[reflect(whiteKingIdx)]
+	blackKingStartScore := KingTableStart[blackKingIdx]
+	blackKingEndScore := CentralizeTable[blackKingIdx]
 	startTableWeight := CountPieces(b)
 	endTableWeight := 32 - startTableWeight
 	whiteKingCumScore := (startTableWeight*whiteKingStartScore +
@@ -304,12 +304,12 @@ func countPieceTables(bbw uint64, bbb uint64, table *[64]int) int {
 	for bbw != 0 {
 		var idx uint8 = uint8(bits.TrailingZeros64(bbw))
 		bbw &= bbw - 1
-		score += pawnTableStart[reflect(idx)]
+		score += PawnTableStart[reflect(idx)]
 	}
 	for bbb != 0 {
 		var idx uint8 = uint8(bits.TrailingZeros64(bbb))
 		bbb &= bbb - 1
-		score -= pawnTableStart[idx]
+		score -= PawnTableStart[idx]
 	}
 	return score
 }
