@@ -75,6 +75,13 @@ func Get(b *dragontoothmg.Board) (found bool, move dragontoothmg.Move,
 	return
 }
 
+func Erase(b *dragontoothmg.Board) {
+	hash := b.Hash()
+	index := hash % uint64(len(keys))
+	keys[index] = 0
+	values[index] = 0
+}
+
 func Load() float32 {
 	return float32(entries) / float32(slots)
 }

@@ -7,11 +7,13 @@ import (
 	"github.com/dylhunn/dragontoothmg"
 	"math"
 	"math/rand"
-	"runtime"
 	"time"
 )
 
-var DefaultSearchThreads int = runtime.NumCPU()
+var DefaultSearchThreads int = 1//runtime.NumCPU()
+
+// Used to keep track of positions that have occurred in the game
+var HistoryMap map[uint64]int = make(map[uint64]int)
 
 // Both constants are negatable and +1able without overflowing
 const NegInf = math.MinInt16 + 2
@@ -23,6 +25,10 @@ const QuiesceCutoffDepth = 5
 // (after the first move).
 func lookupPv(b dragontoothmg.Board, startmove dragontoothmg.Move, depth int) string {
 	var pv string = startmove.String()
+	if startmove == 0 {
+		fmt.Println("info string looking up PV of null move!")
+		return "0000"
+	}
 	b.Apply(startmove)
 	for i := depth; i >= 0; i-- {
 		found, tableMove, tableEval, depth, _ := transtable.Get(&b)
@@ -142,12 +148,12 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 
 // Use a collection of heuristics to sort the moves in their best order.
 func sortMoves(b *dragontoothmg.Board, alpha int16, beta int16, depth int8,
-	halt <-chan bool, stop *bool, moves *[]dragontoothmg.Move) {
+	halt <-chan bool, stop *bool, moves *[]dragontoothmg.Move, history *map[uint64]int) {
 	found, tableMove, _, _, _ := transtable.Get(b)
 	if !found || tableMove == 0 { // use IID to guess the best move
 		var resMove dragontoothmg.Move
 		for i := int8(0); i < depth-1; i++ {
-			_, resMove = ab(b, alpha, beta, i, halt, stop)
+			_, resMove = ab(b, alpha, beta, i, halt, stop, history)
 		}
 		found, tableMove = true, resMove
 	}
@@ -165,14 +171,28 @@ func sortMoves(b *dragontoothmg.Board, alpha int16, beta int16, depth int8,
 // the channels for goroutine invocations.
 func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool,
 	stop *bool, moveChan chan<- dragontoothmg.Move, evalChan chan<- int16) {
-	eval, move := ab(b, alpha, beta, depth, halt, stop)
+	localHistory := make(map[uint64]int)
+	for k2, v2 := range HistoryMap { // copy the game history map so we can modify it
+   		localHistory[k2] = v2
+	}
+	eval, move := ab(b, alpha, beta, depth, halt, stop, &localHistory)
 	moveChan <- move
 	evalChan <- eval
 }
 
 // Perform the alpha-beta search.
-func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool, stop *bool) (int16, dragontoothmg.Move) {
+// The history parameter is to keep track of positions that have occurred, to identify draw-by-repetition
+func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan bool,
+	stop *bool, history *map[uint64]int) (int16, dragontoothmg.Move) {
 	nodeCount++
+
+	// check for draw by 3-fold repetition
+	if (*history)[b.Hash()] >= 3 { // It's a draw
+		return eval.DefaultDrawScore, 0
+	} else if (*history)[b.Hash()] == 2 { // We are in danger of causing a draw
+		transtable.Erase(b) // TODO(dylhunn): Is there a better way to prevent surprise draws?
+	}
+
 	found, tableMove, tableEval, tableDepth, tableNodeType := transtable.Get(b)
 	if found && tableDepth >= depth {
 		if tableNodeType == transtable.Exact {
@@ -201,10 +221,12 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 			return eval.DefaultDrawScore, 0 // stalemate
 		}
 	}
-	sortMoves(b, alpha, beta, depth, halt, stop, &moves)
+	sortMoves(b, alpha, beta, depth, halt, stop, &moves, history)
 	var bestMove dragontoothmg.Move
 	if len(moves) > 0 {
 		bestMove = moves[0] // randomly pick some move
+	} else {
+		bestMove = 0
 	}
 
 	select {
@@ -219,9 +241,11 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 
 	for _, move := range moves {
 		unapply := b.Apply(move)
+		(*history)[b.Hash()]++
 		var score int16
-		score, _ = ab(b, -beta, -alpha, depth-1, halt, stop)
+		score, _ = ab(b, -beta, -alpha, depth-1, halt, stop, history)
 		score = -score
+		(*history)[b.Hash()]--
 		unapply()
 		if score > bestVal {
 			bestMove = move

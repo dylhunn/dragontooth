@@ -16,6 +16,7 @@ const bishopValue = 330
 const rookValue = 500
 const queenValue = 900
 
+// These are public so that they can be changed during parameter optimization
 var BishopPairBonus int = 30
 var DiagonalMobilityBonus int = 4
 var OrthogonalMobilityBonus int = 4

@@ -44,6 +44,7 @@ func uciLoop() {
 			transtable.Initialize(transtable.DefaultTtableSize)
 			// reset the board, in case the GUI skips 'position' after 'newgame'
 			board = dragontoothmg.ParseFen(dragontoothmg.Startpos)
+			// reset the history map
 		case "quit":
 			return
 		case "setoption":
@@ -176,8 +177,10 @@ func uciLoop() {
 				fmt.Println("info string Malformed position command")
 				continue
 			}
+			search.HistoryMap = make(map[uint64]int) // reset the history map
 			if strings.ToLower(posScanner.Text()) == "startpos" {
 				board = dragontoothmg.ParseFen(dragontoothmg.Startpos)
+				search.HistoryMap[board.Hash()]++ // record that this state has occurred
 				posScanner.Scan() // advance the scanner to leave it in a consistent state
 			} else if strings.ToLower(posScanner.Text()) == "fen" {
 				fenstr := ""
@@ -189,6 +192,7 @@ func uciLoop() {
 					continue
 				}
 				board = dragontoothmg.ParseFen(fenstr)
+				search.HistoryMap[board.Hash()]++ // record that this state has occurred
 			} else {
 				fmt.Println("info string Invalid position subcommand")
 				continue
@@ -218,6 +222,7 @@ func uciLoop() {
 					}
 				}
 				board.Apply(nextMove)
+				search.HistoryMap[board.Hash()]++
 			}
 		default:
 			fmt.Println("info string Unknown command:", line)
