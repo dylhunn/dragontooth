@@ -80,6 +80,7 @@ func Erase(b *dragontoothmg.Board) {
 	index := hash % uint64(len(keys))
 	keys[index] = 0
 	values[index] = 0
+	entries--
 }
 
 func Load() float32 {
