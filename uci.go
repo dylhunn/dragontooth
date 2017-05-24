@@ -8,11 +8,13 @@ import (
 	"github.com/dylhunn/dragontooth/transtable"
 	"github.com/dylhunn/dragontoothmg"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
-var VersionString = "0.2 Bahamut " + strconv.Itoa(search.DefaultSearchThreads) + "CPU"
+var VersionString = "0.2 Bahamut " + strconv.Itoa(search.DefaultSearchThreads) +
+	"CPU " + runtime.GOOS + "-" + runtime.GOARCH
 
 func main() {
 	uciLoop()
@@ -205,7 +207,7 @@ func uciLoop() {
 			if strings.ToLower(posScanner.Text()) == "startpos" {
 				board = dragontoothmg.ParseFen(dragontoothmg.Startpos)
 				search.HistoryMap[board.Hash()]++ // record that this state has occurred
-				posScanner.Scan() // advance the scanner to leave it in a consistent state
+				posScanner.Scan()                 // advance the scanner to leave it in a consistent state
 			} else if strings.ToLower(posScanner.Text()) == "fen" {
 				fenstr := ""
 				for posScanner.Scan() && strings.ToLower(posScanner.Text()) != "moves" {

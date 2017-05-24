@@ -4,14 +4,14 @@
 Dragontooth | Dylan D. Hunn
 ===========================
 
-**This project is currently in pre-release alpha state.**
+**This project is currently in beta state.**
 
 Dragontooth is a fast, UCI-compliant chess engine written in Go. The successor to my [previous engine](https://github.com/dylhunn/sabertooth-source), Dragontooth is the first highly-parallel Go chess engine. It uses state-of-the-art techniques, including magic bitboards, fully-legal move generation, highly parallel search, and automatic parameter tuning.
 
 Additionally, Dragontooth has some unique features. It is 100% modular, such that the [move generator and associated utilities](https://github.com/dylhunn/dragontoothmg) are packaged as a library. Moreover, the code is written with a focus on readability, so it can serve as a "reference" engine.
 
-Where can I download compiled binaries/executables?
-===================================================
+**Where can I download compiled binaries/executables?**
+=======================================================
 
 Compiled versions for several platforms are available in [the releases section](https://github.com/dylhunn/dragontooth/releases). This repo contains the source code.
 

@@ -23,6 +23,7 @@ var OrthogonalMobilityBonus int = 6
 var DoubledPawnPenalty int = 6
 var PassedPawnBonus int = 20
 var IsolatedPawnPenalty int = 15
+var ConnectedRookBonus int = 16
 
 var PawnTableStart = [64]int{
 	0, 0, 0, 0, 0, 0, 0, 0,
@@ -112,8 +113,8 @@ var blackPassedPawnTable = [64]uint64{
 
 // For a given file, that file and the adjacent files are activated
 var isolatedPawnTable = [8]uint64{
-	0x303030303030303, 0x707070707070707, 0xe0e0e0e0e0e0e0e, 0x1c1c1c1c1c1c1c1c, 
-	0x3838383838383838, 0x7070707070707070, 0xe0e0e0e0e0e0e0e0, 0xc0c0c0c0c0c0c0c0, 
+	0x303030303030303, 0x707070707070707, 0xe0e0e0e0e0e0e0e, 0x1c1c1c1c1c1c1c1c,
+	0x3838383838383838, 0x7070707070707070, 0xe0e0e0e0e0e0e0e0, 0xc0c0c0c0c0c0c0c0,
 }
 
 // Only activate one file, A-H (A=0, H=7)
@@ -154,7 +155,7 @@ func Evaluate(b *dragontoothmg.Board) int16 {
 	score += passedPawnBonuses(b)
 	score += isolatedPawnPenalties(b)
 	score += kingSafetyBonuses(b)
-	score += connectedRookBonus(b)
+	score += connectedRookBonuses(b)
 
 	if !b.Wtomove {
 		score = -score
@@ -175,14 +176,14 @@ func passedPawnBonuses(b *dragontoothmg.Board) int {
 	for whitePawns != 0 {
 		idx := bits.TrailingZeros64(whitePawns)
 		whitePawns &= whitePawns - 1
-		if whitePassedPawnTable[idx] & b.Black.Pawns == 0 {
+		if whitePassedPawnTable[idx]&b.Black.Pawns == 0 {
 			score += PassedPawnBonus
 		}
 	}
 	for blackPawns != 0 {
 		idx := bits.TrailingZeros64(blackPawns)
 		blackPawns &= blackPawns - 1
-		if blackPassedPawnTable[idx] & b.White.Pawns == 0 {
+		if blackPassedPawnTable[idx]&b.White.Pawns == 0 {
 			score -= PassedPawnBonus
 		}
 	}
@@ -197,7 +198,7 @@ func isolatedPawnPenalties(b *dragontoothmg.Board) int {
 		idx := bits.TrailingZeros64(whitePawns)
 		whitePawns &= whitePawns - 1
 		file := idx % 8
-		neighbors := bits.OnesCount64(isolatedPawnTable[file] & b.White.Pawns) - 1
+		neighbors := bits.OnesCount64(isolatedPawnTable[file]&b.White.Pawns) - 1
 		if neighbors == 0 {
 			score -= IsolatedPawnPenalty
 		}
@@ -206,11 +207,11 @@ func isolatedPawnPenalties(b *dragontoothmg.Board) int {
 		idx := bits.TrailingZeros64(blackPawns)
 		blackPawns &= blackPawns - 1
 		file := idx % 8
-		neighbors := bits.OnesCount64(isolatedPawnTable[file] & b.Black.Pawns) - 1
+		neighbors := bits.OnesCount64(isolatedPawnTable[file]&b.Black.Pawns) - 1
 		if neighbors == 0 {
 			score += IsolatedPawnPenalty
 		}
-		
+
 	}
 	return score
 }
@@ -276,9 +277,33 @@ func bishopPairBonuses(b *dragontoothmg.Board) int {
 	return score
 }
 
-func connectedRookBonus(b *dragontoothmg.Board) int {
+func connectedRookBonuses(b *dragontoothmg.Board) int {
 	var score int
-
+	whiteRooks := b.White.Rooks
+	blackRooks := b.Black.Rooks
+	allPieces := b.White.All | b.Black.All
+	widx1 := uint8(bits.TrailingZeros64(whiteRooks))
+	if widx1 != 64 { // we only award a single bonus to each side
+		whiteRooks &= whiteRooks - 1
+		widx2 := uint8(bits.TrailingZeros64(whiteRooks))
+		if widx2 != 64 {
+			slides := dragontoothmg.CalculateRookMoveBitboard(widx1, allPieces)
+			if slides&(uint64(1)<<widx2) != 0 {
+				score += ConnectedRookBonus
+			}
+		}
+	}
+	bidx1 := uint8(bits.TrailingZeros64(blackRooks))
+	if bidx1 != 64 {
+		blackRooks &= blackRooks - 1
+		bidx2 := uint8(bits.TrailingZeros64(blackRooks))
+		if bidx2 != 64 {
+			slides := dragontoothmg.CalculateRookMoveBitboard(bidx1, allPieces)
+			if slides&(uint64(1)<<bidx2) != 0 {
+				score -= ConnectedRookBonus
+			}
+		}
+	}
 	return score
 }
 

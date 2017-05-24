@@ -7,10 +7,11 @@ import (
 	"github.com/dylhunn/dragontoothmg"
 	"math"
 	"math/rand"
+	"runtime"
 	"time"
 )
 
-var DefaultSearchThreads int = 1//runtime.NumCPU()
+var DefaultSearchThreads int = runtime.NumCPU()
 
 // Used to keep track of positions that have occurred in the game
 var HistoryMap map[uint64]int = make(map[uint64]int)
@@ -105,7 +106,7 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 			moves[thread], evals[thread] = <-movesChan, <-evalsChan
 		}
 		// Sanity check: results should be the same
-		for thread := 0; thread < threadsToSpawn-1; thread++ {
+		/*for thread := 0; thread < threadsToSpawn-1; thread++ {
 			if moves[thread].String() != moves[thread+1].String() {
 				fmt.Println("info string Search threads returned inconsistent results:",
 					moves[thread].String(), moves[thread+1].String())
@@ -114,7 +115,7 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 				fmt.Println("info string Search threads returned inconsistent evals:",
 					evals[thread], evals[thread+1])
 			}
-		}
+		}*/
 		timeElapsed := time.Since(start)
 		eval, move := evals[0], moves[0]
 		if lastMove == 0 {
@@ -140,7 +141,7 @@ func Search(board *dragontoothmg.Board, halt <-chan bool, stop *bool) {
 			}
 		}
 	}
-	if i ==  math.MaxInt8 { // We reached max depth; wait for the stop signal
+	if i == math.MaxInt8 { // We reached max depth; wait for the stop signal
 		*stop = <-halt
 		fmt.Println("bestmove", &lastMove)
 	}
@@ -173,7 +174,7 @@ func abWrapper(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt
 	stop *bool, moveChan chan<- dragontoothmg.Move, evalChan chan<- int16) {
 	localHistory := make(map[uint64]int)
 	for k2, v2 := range HistoryMap { // copy the game history map so we can modify it
-   		localHistory[k2] = v2
+		localHistory[k2] = v2
 	}
 	eval, move := ab(b, alpha, beta, depth, halt, stop, &localHistory)
 	moveChan <- move
@@ -212,7 +213,7 @@ func ab(b *dragontoothmg.Board, alpha int16, beta int16, depth int8, halt <-chan
 	}
 
 	alpha0 := alpha
-	bestVal := int16(NegInf) 
+	bestVal := int16(NegInf)
 	moves := b.GenerateLegalMoves()
 	if len(moves) == 0 || b.Halfmoveclock >= 100 {
 		if b.OurKingInCheck() { // checkmate
